@@ -1,22 +1,24 @@
 # Quarkus WorkItems — Session Handover
-**Date:** 2026-04-16
+**Date:** 2026-04-17
 
 ## Project Status
 
-All planned phases complete. 262 tests passing across all modules. 1 open issue (#39, blocked).
+All planned phases complete. 267+ tests passing across all modules. 1 open issue (#39, blocked).
 
 | Module | Tests |
 |---|---|
 | runtime | 217 |
 | workitems-flow | 32 |
 | quarkus-workitems-ledger | 74 |
-| quarkus-workitems-queues | 45 |
+| quarkus-workitems-queues | 50 |
 | quarkus-workitems-examples | 4 |
+| quarkus-workitems-queues-examples | 5 |
+| quarkus-workitems-queues-dashboard | 14 (+ 6 disabled Pilot) |
 | quarkus-workitems-flow-examples | 2 |
 | testing | 16 |
 | integration-tests | 19 (native) |
 
-## What Was Built
+## What Was Built (this session)
 
 **Labels + vocabulary (sub-epic #51):**
 - `WorkItemLabel` @Embeddable on `WorkItem`: `path`, `persistence` (MANUAL/INFERRED), `appliedBy`
@@ -28,31 +30,34 @@ All planned phases complete. 262 tests passing across all modules. 1 open issue 
 **quarkus-workitems-queues (sub-epic #52):**
 - `WorkItemFilter` entity + CRUD REST + ad-hoc eval (`POST /filters/evaluate`)
 - `FilterConditionEvaluator` SPI: JEXL (default), JQ (jackson-jq), Lambda (CDI beans)
-- JEXL/JQ contexts expose: status, priority, assigneeId, category, labels (as List<String>)
 - `FilterChain`: filterId → Set<workItemId> inverse index for O(affected) cascade
 - `FilterEngineImpl`: strip INFERRED → multi-pass eval (max 10) → propagation → cascade-correct delete
-- `QueueView` entity + REST: `GET /queues/{id}` returns live label-pattern query with sort
-- `WorkItemQueueState`: relinquishable soft-assignment flag (`PUT /workitems/{id}/relinquishable`)
-- Flyway V2000 namespace (avoids conflicts with core V1-V3 and ledger V1002)
+- `QueueView` + REST: `GET /queues/{id}` evaluates `additionalConditions` JEXL per item + sort
+- `PUT /workitems/{id}/pickup`: queue pickup — PENDING (standard claim) or ASSIGNED+relinquishable (soft takeover, clears flag)
+- `PUT /workitems/{id}/relinquishable`: signal willingness to release
 
-**Documentation sync:**
-- `docs/api-reference.md`: added Label API, Vocabulary API, Filter API, Queue API, QueueState API; WorkItemLabelResponse schema
-- `README.md`: queues in features, modules table, and documentation index
-- `CLAUDE.md`: queues module in project structure and build commands
-- `docs/DESIGN.md`: queues as Phase 7 (complete), updated module table and Phase 1 description
+**quarkus-workitems-queues-examples:**
+- 5 runnable scenarios: support triage cascade, legal routing, finance approval, security escalation, document review pipeline (step-by-step with `POST /queue-examples/review/step`)
+
+**quarkus-workitems-queues-dashboard:**
+- Tamboui TUI inside Quarkus via `@QuarkusMain`; `@ObservesAsync WorkItemLifecycleEvent` — zero polling delay
+- `QueueBoardBuilder` (pure logic, 10 unit tests), `ReviewStepService` (CDI step machine, 4 @QuarkusTest)
+- Pilot end-to-end tests written + @Disabled (TestBackend not in Maven snapshots; needs `./gradlew publishToMavenLocal`)
 
 ## Immediate Next Step
 
-**Quarkiverse submission** — the extension is feature-complete, tested, native-validated. Path: fork quarkiverse org, wire CI (GitHub Actions, Renovate, docs site), open intake PR.
+**Dashboard verification** — run in a real terminal to confirm items move between columns:
+```bash
+JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn quarkus:dev -pl quarkus-workitems-queues-dashboard
+```
+Press `s` to step, `q` to quit.
 
 ## Open Issues
 
 - #39 — ProvenanceLink PROV-O graph (blocked: CaseHub and Qhorus not ready)
 
-## Deferred (queues module)
+## Remaining Deferred (queues module)
 
-- `additionalConditions` on `QueueView` — stored but not evaluated (O(n) evaluation per request, deferred)
-- Relinquishable claim relaxation — flag stored, but `PUT /{id}/claim` does not yet check it
 - Non-GLOBAL vocabulary scopes — `POST /vocabulary/ORG|TEAM|PERSONAL` returns 501 (needs auth context)
 
 ## References
