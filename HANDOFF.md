@@ -3,7 +3,7 @@
 
 ## Project Status
 
-All planned phases complete. 315+ tests passing across all modules. 1 open issue (#39, blocked).
+All planned phases complete. 321+ tests passing across all modules. 1 open issue (#39, blocked).
 
 | Module | Tests |
 |---|---|
@@ -13,7 +13,7 @@ All planned phases complete. 315+ tests passing across all modules. 1 open issue
 | quarkus-workitems-queues | 50 |
 | quarkus-workitems-examples | 4 |
 | quarkus-workitems-queues-examples | 5 |
-| quarkus-workitems-queues-dashboard | 14 (+ 6 disabled Pilot) |
+| quarkus-workitems-queues-dashboard | 20 (14 unit/CDI + 6 Pilot) |
 | quarkus-workitems-flow-examples | 2 |
 | testing | 16 |
 | integration-tests | 19 (native) |
@@ -53,7 +53,7 @@ All planned phases complete. 315+ tests passing across all modules. 1 open issue
 **quarkus-workitems-queues-dashboard:**
 - Tamboui TUI inside Quarkus via `@QuarkusMain`; `@ObservesAsync WorkItemLifecycleEvent` — zero polling delay
 - `QueueBoardBuilder` (pure logic, 10 unit tests), `ReviewStepService` (CDI step machine, 4 @QuarkusTest)
-- Pilot end-to-end tests written + @Disabled (TestBackend not in Maven snapshots; needs `./gradlew publishToMavenLocal`)
+- Pilot end-to-end tests: 6 tests passing via `TuiTestRunner` + `Pilot` (headless, no real terminal). `TestBackend` is in `tamboui-core:test-fixtures` — not `tamboui-tui:test-fixtures` as expected. Feedback raised with Max Anderston (Tamboui author) to either move `TestBackend` or declare the API dependency transitively.
 
 ## Immediate Next Step
 
