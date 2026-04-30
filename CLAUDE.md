@@ -13,12 +13,12 @@ https://raw.githubusercontent.com/casehubio/casehub-parent/main/docs/PLATFORM.md
 
 **This repo's deep-dive:**
 ```
-https://raw.githubusercontent.com/casehubio/casehub-parent/main/docs/repos/quarkus-work.md
+https://raw.githubusercontent.com/casehubio/casehub-parent/main/docs/repos/casehub-work.md
 ```
 
 **Other repo deep-dives** (fetch the relevant ones when your implementation touches their domain):
-- quarkus-ledger: `https://raw.githubusercontent.com/casehubio/casehub-parent/main/docs/repos/quarkus-ledger.md`
-- quarkus-qhorus: `https://raw.githubusercontent.com/casehubio/casehub-parent/main/docs/repos/quarkus-qhorus.md`
+- casehub-ledger: `https://raw.githubusercontent.com/casehubio/casehub-parent/main/docs/repos/casehub-ledger.md`
+- casehub-qhorus: `https://raw.githubusercontent.com/casehubio/casehub-parent/main/docs/repos/casehub-qhorus.md`
 - casehub-engine: `https://raw.githubusercontent.com/casehubio/casehub-parent/main/docs/repos/casehub-engine.md`
 - claudony: `https://raw.githubusercontent.com/casehubio/casehub-parent/main/docs/repos/claudony.md`
 - casehub-connectors: `https://raw.githubusercontent.com/casehubio/casehub-parent/main/docs/repos/casehub-connectors.md`
@@ -84,10 +84,10 @@ CaseHub (case orchestration)   Quarkus-Flow (workflow execution)   Qhorus (agent
 WorkItems has **no dependency on CaseHub, Quarkus-Flow, or Qhorus** — it is the independent human task layer. The integration modules (future) depend on WorkItems, not vice versa.
 
 **Related projects (read only, for context):**
-- `~/claude/quarkus-qhorus` — agent communication mesh (Qhorus integration target)
+- `~/claude/casehub/qhorus` — agent communication mesh (Qhorus integration target)
 - `~/claude/casehub/engine` — real CaseHub engine (CMMN + blackboard; **not** `~/claude/casehub-poc` which is the retiring POC)
 - `~/dev/quarkus-flow` — workflow engine (Quarkus-Flow integration target; uses CNCF Serverless Workflow SDK)
-- `~/claude/claudony` — integration layer; will surface WorkItems inbox in its dashboard
+- `~/claude/casehub/claudony` — integration layer; will surface WorkItems inbox in its dashboard
 
 ---
 
@@ -304,9 +304,9 @@ scripts/mvn-compile <dependent-of-X>      # verify dependent still compiles
 
 ---
 
-**`quarkus-ledger` prerequisite:** `casehub-work-ledger` depends on `io.quarkiverse.ledger:quarkus-ledger:0.2-SNAPSHOT` — a sibling project at `~/claude/quarkus-ledger/`. If the build fails with "Could not find artifact", install it first:
+**`casehub-ledger` prerequisite:** `casehub-work-ledger` depends on `io.casehub:casehub-ledger:0.2-SNAPSHOT` — a sibling project at `~/claude/casehub/ledger/`. If the build fails with "Could not find artifact", install it first:
 ```bash
-JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn install -DskipTests -f ~/claude/quarkus-ledger/pom.xml
+JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn install -DskipTests -f ~/claude/casehub/ledger/pom.xml
 ```
 
 **Quarkiverse format check:** CI runs `mvn -Dno-format` to skip the enforced formatter. Run `mvn` locally to apply formatting.
@@ -333,7 +333,7 @@ JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn install -DskipTests -f ~/claude/qu
 - `callerRef` on `WorkItem` is opaque — quarkus-work stores and echoes it in every `WorkItemLifecycleEvent`; it never interprets it. CaseHub embeds its `planItemId` here so child completion events can be routed back to the right `PlanItem` without a query.
 - Spawn group cascade cancellation is scoped to the specific group via `createdBy = "system:spawn:{groupId}"` — `DELETE /workitems/{id}/spawn-groups/{gid}?cancelChildren=true` cancels only children from that group, not all children of the parent.
 - Spawn idempotency key is scoped per parent — the same key on different parents creates separate groups; uniqueness is `(parent_id, idempotency_key)`.
-- `casehub-work-ledger` depends on `io.quarkiverse.ledger:quarkus-ledger:0.2-SNAPSHOT` — update this version when `quarkus-ledger` changes its own version. The prerequisite note below is stale; use `0.2-SNAPSHOT`.
+- `casehub-work-ledger` depends on `io.casehub:casehub-ledger:0.2-SNAPSHOT` — update this version when `casehub-ledger` changes its own version.
 - `@CacheResult` on `ReportService` methods accepts nullable parameters — Quarkus 3.x `CompositeCacheKey` handles nulls correctly via `Arrays.hashCode`; the cache key for `slaBreaches(null, null, null, null)` is stable and shared across unfiltered calls. Use a `from` filter in tests that call the endpoint unfiltered AND need fresh data (cache TTL is 1s in test `application.properties`).
 - `PostgresDialectValidationTest` runs against a real PostgreSQL Testcontainer via a dedicated Surefire execution (`postgres-dialect-test`) that: (1) sets `quarkus.datasource.db-kind=postgresql` as a **system property** before augmentation (test resource overrides don't reach the augmentation cache check), (2) uses `reuseForks=false` for a clean JVM so the fresh augmentation uses PostgreSQL, (3) runs **first** before H2 tests so no cached H2 artifact exists yet. `PostgresTestResource` starts the container and injects the JDBC URL. Flyway is disabled in the PostgreSQL test and replaced with `hibernate-orm.database.generation=drop-and-create` because the Flyway migrations use H2-permissive SQL (e.g. bare `DOUBLE` type) that PostgreSQL rejects — this is a known production compatibility issue to address separately.
 - `CAST(date_trunc('day', w.createdAt) AS LocalDate)` in HQL — the explicit `CAST AS LocalDate` ensures Hibernate 6 returns `java.time.LocalDate` in the result set regardless of dialect, avoiding type ambiguity between H2 and PostgreSQL.
@@ -411,5 +411,5 @@ All casehubio projects align on these conventions:
 ```
 CI must use `server-id: github` + `GITHUB_TOKEN` in `actions/setup-java`.
 
-**Cross-project SNAPSHOT versions:** `quarkus-ledger` and `casehub-work` modules are `0.2-SNAPSHOT` resolved from GitHub Packages. Declare in `pom.xml` properties and `<dependencyManagement>` — no hardcoded versions in submodule poms.
+**Cross-project SNAPSHOT versions:** `casehub-ledger` and `casehub-work` modules are `0.2-SNAPSHOT` resolved from GitHub Packages. Declare in `pom.xml` properties and `<dependencyManagement>` — no hardcoded versions in submodule poms.
 
