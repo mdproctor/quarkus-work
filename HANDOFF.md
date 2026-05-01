@@ -1,47 +1,46 @@
 # casehub-work — Session Handover
-**Date:** 2026-04-30
+**Date:** 2026-05-01
 
 ## Project Status
 
-Fully consistent CaseHub identity across all files. 637 runtime tests passing. 76 ledger tests passing. Working tree clean.
+637 runtime tests passing. All known intermittent failures fixed and pushed. Working tree clean.
 
 ## What Was Done This Session
 
-### Quarkiverse → CaseHub identity cleanup (complete)
+### Four intermittent failures fixed
 
-Full systematic pass across all file types:
-- **458 source files** moved from `io/quarkiverse/work/` → `io/casehub/work/` via `git mv` (18 modules)
-- **All docs**: `quarkus.work.*` config prefix → `casehub.work.*`; `io.quarkiverse.work` groupId → `io.casehub`; prose descriptions updated
-- **Files fixed**: README.md, pom.xml, work-flow/README.md, docs/DESIGN.md, docs/api-reference.md, docs/integration-guide.md, docs/examples-guide.md, docs/specs/*, adr/0001, casehub-work-flow-examples/README.md, WorkItemsConfig.java Javadoc
-- **GitHub issue #136**: body updated; naming convention comment added
-- Third-party Quarkiverse artifacts (langchain4j, quarkus-flow, casehub-ledger) left untouched throughout
+**NotificationDeliveryTest** (`casehub-work-notifications`):
+- `Thread.sleep()` → Awaitility `await().atMost(5s).untilAsserted()`
+- No cleanup between tests → `@AfterEach @Transactional` deletes rules, audit entries, and work items in FK order
+- Awaitility added to `casehub-work-notifications/pom.xml`
 
-### Tier-4 health check findings fixed
+**WorkItemNativeIT.reports_slaBreaches_e2e_breach_appears**:
+- Smoke test cached a 0-breach result at production TTL; e2e test hit same cache key
+- Fixed: `?from=now-5m` creates a distinct `CompositeCacheKey`
 
-- `docs/examples-guide.md` + `docs/integration-guide.md`: 22 remaining `quarkus.work.*` occurrences (missed in first pass)
-- `docs/DESIGN.md`: artifact name `io.quarkiverse.ledger:quarkus-ledger` → `io.casehub:casehub-ledger`
-- `adr/0001`: same artifact name fix
-- Stale `.worktrees/feature/epic-104-sla-reports/` removed
+**WorkItemGroupLifecycleEventTest.completedEventFiresExactlyOnceAtThreshold** (root: production bug):
+- `WorkItemService.claim()` loaded `WorkItemSpawnGroup` (@Version entity) read-only, then `persistAndFlush()` flushed it alongside WorkItem. `MultiInstanceCoordinator` concurrently updated the spawn group version → OCC
+- Fixed: `em.detach(group)` immediately after reading — `EntityManager` injected into `WorkItemService`
 
-### Refinement epic #147 created
+**WorkItemEventBroadcaster** (log noise, not test failure):
+- `BroadcastProcessor.onNext()` throws `BackPressureFailure` with no subscribers — "lack of requests" means zero consumers, not slow consumer
+- Fixed: catch `BackPressureFailure` silently in `onEvent()`
 
-5 child issues from tier-4 recommendations:
-- #148 — Split DESIGN.md into focused documents
-- #149 — Decompose WorkItemService (extract ExpiryLifecycleService)
-- #150 — Extract WorkItemEventBroadcaster as pluggable SPI (**unblocks #93**)
-- #151 — Document Flyway migration version numbering in CLAUDE.md
-- #152 — Split casehub-work-examples into core and full variants
+### CLAUDE.md updated with two new gotchas
+- `persistAndFlush()` flushes entire session — detach read-only `@Version` entities
+- `BroadcastProcessor` throws on no subscribers
 
 ## Open / Next
 
 | Priority | What |
 |---|---|
-| 1 | #150 — broadcaster SPI (do this before #93) |
-| 2 | #93 — Distributed SSE (SPI + CDI design agreed; needs #150 first) |
-| 3 | #148–#152 — refinement epic in any order |
+| 1 | #150 — broadcaster SPI (do before #93) |
+| 2 | #93 — Distributed SSE (SPI + CDI design agreed) |
+| 3 | #148–#152 — refinement epic |
 
 ## Key References
 
-- Refinement epic: https://github.com/casehubio/work/issues/147
-- Previous handover (ledger audit fixes): `git show HEAD~10:HANDOFF.md`
-- Health check: tier-4 clean except two intentional explicit versions (casehub-ledger, casehub-connectors) documented in CLAUDE.md
+- Bug fix commits: `95bf119` (notifications), `2f3ff2c` (sla cache), `654117a` (OCC detach), `74403de` (BackPressure)
+- Blog: `blog/2026-05-01-mdp01-three-bugs-wrong-error.md`
+- Garden entries: GE-20260501-ab68c1 (Hibernate flush-all OCC), GE-20260501-fbd68d (BroadcastProcessor), GE-20260501-29e3b8 (WireMock port reuse)
+- Previous context: `git show HEAD~10:HANDOFF.md`
